@@ -305,9 +305,11 @@ CI runs the portable and colocated suites, Ruff, and a package build; it has no
 PPO update/checkpoint or pendulum-control smoke test. Passing native physics or
 configuration tests does not establish policy learning quality or checkpoint
 resume correctness. Independent storage/GAE, timeout handling, and normalizer
-update/freeze/save/load coverage remain areas for review. Deployment observation
-parity covers zero-default joint angles only; adapting deployment to the current
-Go2Trot posture and reward-only reference remains explicit debt.
+update/freeze/save/load coverage remain areas for review. Deployment utility
+tests use synthetic messages and check static-posture offsets, unrestricted
+position targets, and the active gait-frequency observation. The
+simulation/deployment observation-parity test has been removed; these utility
+checks do not establish hardware behavior or checkpoint compatibility.
 
 VSim backend code, its optional dependency extra, and marked tests remain, but
 the local test launcher and support workflow are deferred. Hosted CI does not
@@ -360,10 +362,10 @@ contact rewards. Phase observations and frequency remain available to the
 policy. This changes action and joint-observation semantics: train a fresh
 policy. Loading an old config alone does not restore the previous controller's
 additive gait reference. Learning quality for this formulation is unvalidated.
-The hardware deployment path still implements the legacy additive-gait
-controller; its observation parity test explicitly uses the legacy zero-default
-posture. Deployment of policies trained with this new formulation needs a
-separate controller update and validation.
+The deployment utilities use the same static-posture action convention, without
+an additive gait reference or position-target clipping. Their frequency
+observation reads the active controller frequency used by the phase clock.
+Hardware validation of this formulation remains outstanding.
 
 The earlier additive-reference tuning checkpoint is provisional: reduced
 residual action scales,
