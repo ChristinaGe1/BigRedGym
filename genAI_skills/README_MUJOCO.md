@@ -240,6 +240,14 @@ The experiment defaults to the task's current `experiment_name`; use
 such as `--num_envs`, `--seed`, or `--max_iterations`, are applied after the
 saved configs are loaded.
 
+The MuJoCo CPU viewer paces simulation to real time by default: one simulated
+second takes at least one wall-clock second, including policy and rendering
+work. It accounts for all physics substeps between frames and resumes without
+fast catch-up after a slow frame. No playback flag is needed. Headless runs
+remain unrestricted; backend callers can opt out with
+`render(sync_frame_time=False)`. This changes wall-clock pacing, not the physics
+timestep or control frequency. Workloads slower than real time remain slower.
+
 Only the saved config modules and their saved config dependencies are loaded.
 The current task implementation, learning stack, and selected physics backend
 remain active. This makes the option suitable for recent compatible runs while
