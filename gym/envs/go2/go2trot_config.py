@@ -6,15 +6,14 @@ class Go2TrotCfg(Go2Cfg):
         episode_length_s = 5
 
     class init_state(Go2Cfg.init_state):
-        # The gait reference supplies the nominal posture; residual targets
-        # therefore use zero joint offsets here.
+        # Policy targets are offsets from this static nominal posture.
         default_joint_angles = {
             "hip_joint": 0.0,
-            "calf_joint": 0.0,
-            "FL_thigh_joint": 0.0,
-            "FR_thigh_joint": 0.0,
-            "RL_thigh_joint": 0.0,
-            "RR_thigh_joint": 0.0,
+            "calf_joint": -1.36,
+            "FL_thigh_joint": 0.96,
+            "FR_thigh_joint": 0.96,
+            "RL_thigh_joint": 0.96,
+            "RR_thigh_joint": 0.96,
         }
         reset_mode = "reset_to_basic"
 
@@ -51,11 +50,11 @@ class Go2TrotCfg(Go2Cfg):
         }
         # Canonical order is FL, FR, RL, RR; hip, thigh, calf within each leg.
         # q_ref = offset + amplitude * sin(phase + leg_phase).
-        # These are relative PD targets; LeggedRobot adds default_dof_pos.
+        # Reward-only offsets from default_dof_pos, never added to PD targets.
         # The thigh/calf amplitudes approximately preserve fore-aft foot
         # position while alternately extending the stance diagonal and
         # shortening the swing diagonal.
-        gait_joint_offsets = 4 * [0.0, 0.96, -1.36]
+        gait_joint_offsets = 4 * [0.0, 0.0, 0.0]
         gait_joint_amplitudes = 4 * [0.0, -0.15, 0.30]
 
     class commands(Go2Cfg.commands):
@@ -174,6 +173,7 @@ class Go2TrotRunnerCfg(Go2RunnerCfg):
                 action_rate2 = 0.05
                 trot_support = 3.0
                 swing_contact = 3.0
+                reference_traj = 3.0
 
             class termination_weight:
                 termination = 0.01

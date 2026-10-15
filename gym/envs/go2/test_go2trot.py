@@ -49,3 +49,23 @@ def test_yaw_tracking_uses_velocity_error_not_its_square():
             [1.0, torch.exp(torch.tensor(-0.16)), torch.exp(torch.tensor(-0.16))]
         ),
     )
+
+
+def test_reference_reward_tracks_measured_joints_with_normalized_symmetric_error():
+    task = Go2Trot.__new__(Go2Trot)
+    task.cfg = Go2TrotCfg()
+    # Include a passive joint and permute actuator order.
+    task.actuated_dof_indices = torch.tensor([2, 0])
+    task.default_dof_pos = torch.tensor([[0.4, 10.0, -0.6]])
+    task.gait_reference = torch.tensor([[0.2, -0.1]])
+    task.scales = {"dof_pos": torch.tensor([2.0, 1.0, 0.5])}
+    task.dof_pos = torch.tensor([[0.3, -99.0, -0.4]])
+    assert task._reward_reference_traj().item() == pytest.approx(1.0)
+    for sign in [-1, 1]:
+        task.dof_pos[0, 0] = 0.3 + sign * 1.0
+        task.dof_pos[0, 2] = -0.4 + sign * 0.25
+        expected = (
+            torch.exp(torch.tensor(-0.25 / task.cfg.reward_settings.tracking_sigma))
+            - 0.1
+        )
+        assert task._reward_reference_traj().item() == pytest.approx(expected.item())

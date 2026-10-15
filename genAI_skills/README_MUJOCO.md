@@ -291,8 +291,9 @@ CI runs the portable and colocated suites, Ruff, and a package build; it has no
 PPO update/checkpoint or pendulum-control smoke test. Passing native physics or
 configuration tests does not establish policy learning quality or checkpoint
 resume correctness. Independent storage/GAE, timeout handling, and normalizer
-update/freeze/save/load coverage remain areas for review. The strict deployment
-observation-parity expected failure remains explicit debt.
+update/freeze/save/load coverage remain areas for review. Deployment observation
+parity covers zero-default joint angles only; adapting deployment to the current
+Go2Trot posture and reward-only reference remains explicit debt.
 
 VSim backend code, its optional dependency extra, and marked tests remain, but
 the local test launcher and support workflow are deferred. Hosted CI does not
@@ -336,7 +337,22 @@ backends. Old policies need their saved observation/action scaling; changing
 action scales at playback changes the controller. Config snapshots predating
 the current backend config schema may require migration before evaluation.
 
-The Go2Trot tuning checkpoint is provisional: reduced residual action scales,
+Go2Trot now uses its sinusoidal gait reference only in `reference_traj`, a
+joint-position tracking reward with weight 3.0 and the same squared-exponential
+plus absolute-error form as MiniCheetahRef. PD targets are policy offsets from
+the static nominal posture (hip 0, thigh 0.96, calf -1.36 radians). Reference
+tracking stays active at zero commands, consistent with the existing trot
+contact rewards. Phase observations and frequency remain available to the
+policy. This changes action and joint-observation semantics: train a fresh
+policy. Loading an old config alone does not restore the previous controller's
+additive gait reference. Learning quality for this formulation is unvalidated.
+The hardware deployment path still implements the legacy additive-gait
+controller; its observation parity test explicitly uses the legacy zero-default
+posture. Deployment of policies trained with this new formulation needs a
+separate controller update and validation.
+
+The earlier additive-reference tuning checkpoint is provisional: reduced
+residual action scales,
 revised action-rate and yaw-tracking rewards, and revised command sampling
 improve some fixed-command cases, but
 turning, fast tracking, and jitter still miss acceptance bounds. Observation
