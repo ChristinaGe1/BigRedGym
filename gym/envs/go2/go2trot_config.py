@@ -59,10 +59,13 @@ class Go2TrotCfg(Go2Cfg):
         gait_joint_amplitudes = 4 * [0.0, -0.15, 0.30]
 
     class commands(Go2Cfg.commands):
-        var = 1.0
+        # Standard deviation in m/s around the forward-command centers below.
+        var = 0.1
 
         class ranges(Go2Cfg.commands.ranges):
-            lin_vel_x = [-1.0, 0.0, 1.0, 3.0]
+            lin_vel_x = [-0.5, 0.0, 0.5, 1.0, 2.0]
+            lin_vel_y = 0.5
+            yaw_vel = 1.5
 
     class push_robots(Go2Cfg.push_robots):
         toggle = True
@@ -99,7 +102,8 @@ class Go2TrotCfg(Go2Cfg):
         base_height = 0.3
         dof_pos = 4 * [1.0472, 2.53075, 0.94247]
         dof_pos_obs = dof_pos
-        dof_pos_target = [0.5 * x for x in dof_pos]
+        # Residual radians per policy unit, independent of observation ranges.
+        dof_pos_target = 4 * [0.2, 0.3, 0.3]
         tau_ff = 4 * [23.7, 23.7, 45.43]
 
 
@@ -155,7 +159,7 @@ class Go2TrotRunnerCfg(Go2RunnerCfg):
         class reward:
             class weights:
                 tracking_lin_vel = 4.0
-                tracking_ang_vel = 2.0
+                tracking_ang_vel = 4.0
                 lin_vel_z = 0.0
                 ang_vel_xy = 0.01
                 orientation = 1.0
@@ -166,10 +170,11 @@ class Go2TrotRunnerCfg(Go2RunnerCfg):
                 feet_contact_forces = 0.0
                 dof_near_home = 0.0
                 min_base_height = 0.5
-                action_rate = 0.25
-                action_rate2 = 0.025
-                trot_support = 0.625
-                swing_contact = 1.25
+                action_rate = 5.0
+                action_rate2 = 25.0
+                action_clipping = 5.0
+                trot_support = 3.0
+                swing_contact = 3.0
 
             class termination_weight:
                 termination = 0.01
@@ -189,7 +194,7 @@ class Go2TrotRunnerCfg(Go2RunnerCfg):
         # Critic
         use_clipped_value_loss = True
         # Actor
-        entropy_coef = 0.01
+        entropy_coef = 0.001
         schedule = "adaptive"  # could be adaptive, fixed
         desired_kl = 0.01
         lr_range = [2e-5, 1e-2]
@@ -197,4 +202,4 @@ class Go2TrotRunnerCfg(Go2RunnerCfg):
 
     class runner(Go2RunnerCfg.runner):
         experiment_name = "go2trot"
-        max_iterations = 550
+        max_iterations = 1100
