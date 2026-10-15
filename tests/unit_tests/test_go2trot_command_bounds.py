@@ -68,6 +68,12 @@ def test_full_position_commands_reach_both_limits_with_nonzero_reference(task):
 
     assert task.dof_pos_target is buffer
     assert torch.equal(samples, original_samples)
+    torch.testing.assert_close(
+        task.action_clip_error,
+        samples * task.scales["dof_pos_target"] - task.dof_pos_target,
+    )
+    expected_clip_cost = -torch.mean(0.5 / task.scales["dof_pos_target"]).expand(2)
+    torch.testing.assert_close(task._reward_action_clipping(), expected_clip_cost)
     full_command = task.gait_reference + task.default_dof_pos + task.dof_pos_target
     expected = torch.stack((limits[:, 0], limits[:, 1]))
     torch.testing.assert_close(full_command, expected, atol=3e-7, rtol=0)
@@ -84,6 +90,7 @@ def test_legal_residual_commands_are_unchanged(task):
     task._pre_decimation_step()
 
     assert torch.equal(task.dof_pos_target, requested_residual)
+    assert torch.count_nonzero(task._reward_action_clipping()) == 0
 
 
 def test_huge_samples_leave_applied_history_and_rewards_finite(task):
@@ -107,7 +114,7 @@ def test_huge_samples_leave_applied_history_and_rewards_finite(task):
             task.get_state("dof_pos_target"),
             applied / task.scales["dof_pos_target"],
         )
-        expected_rate = -(applied - previous[:, 12:24]).square().mean(dim=1)
+        expected_rate = -(applied - previous[:, :12]).square().mean(dim=1)
         expected_rate2 = (
             -(applied - 2 * previous[:, :12] + previous[:, 12:24]).square().mean(dim=1)
         )
@@ -116,6 +123,7 @@ def test_huge_samples_leave_applied_history_and_rewards_finite(task):
         assert torch.isfinite(task.dof_pos_history).all()
         assert torch.isfinite(task._reward_action_rate()).all()
         assert torch.isfinite(task._reward_action_rate2()).all()
+        assert torch.isfinite(task._reward_action_clipping()).all()
         assert torch.isfinite(task.torques).all()
         previous = expected_history
 

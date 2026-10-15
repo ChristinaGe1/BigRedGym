@@ -574,10 +574,10 @@ class LeggedRobot(BaseTask):
         return -torch.mean(torch.square(self.dof_vel), dim=1)
 
     def _reward_action_rate(self):
-        """Penalize changes in actions"""
+        """Penalize consecutive target changes, including alternating jitter."""
         n = self.num_actuators
         error = torch.square(
-            self.dof_pos_history[:, :n] - self.dof_pos_history[:, 2 * n :]
+            self.dof_pos_history[:, :n] - self.dof_pos_history[:, n : 2 * n]
         )
         return -torch.mean(error, dim=1)
 
