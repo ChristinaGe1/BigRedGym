@@ -13,6 +13,7 @@ import mujoco
 import numpy as np
 import torch
 
+from gym import GYM_ROOT_DIR
 from gym.envs.base.domain_randomization import (
     contact_friction_range,
     link_mass_scale_range,
@@ -152,9 +153,17 @@ class MuJocoCPUBackend(MuJocoBackendBase):
         self._randomize_contact_friction = contact_friction_range(cfg) is not None
         self._randomize_link_mass = link_mass_scale_range(cfg) is not None
         headless = task.headless if task is not None else True
+        visual_model = getattr(cfg.asset, "mujoco_visual_model", None)
+        visual_model_path = (
+            visual_model.format(GYM_ROOT_DIR=GYM_ROOT_DIR)
+            if visual_model is not None and not headless
+            else None
+        )
 
         mjm = self._load_model(
-            cfg, discard_visual=self._randomize_link_mass and headless
+            cfg,
+            discard_visual=self._randomize_link_mass and headless,
+            visual_model_path=visual_model_path,
         )
         self._configure_model(mjm, cfg, device)
         self._run_task_callbacks(mjm, task)

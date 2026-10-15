@@ -143,7 +143,13 @@ SDK is elsewhere, set `asset.vsim_visual_mesh_dir` in the Go2 config to its
 `assets/go2/assets` directory. The wheel alone does not include these meshes.
 VSim substitutes these visuals before converting our URDF; joints, collisions,
 and inertias still come from our robot, not the vendor's `go2_og.vsim`.
-MuJoCo does not need this directory.
+The MuJoCo CPU viewer uses the same OBJ files, with material colors read from
+`thirdparty/vlearn/assets/go2/go2.xml`. `asset.mujoco_visual_model` selects this
+visual donor; its dynamics are ignored. Robot collision shapes are hidden in
+viewer geometry group 3, while the detailed visual surfaces remain visible.
+Headless MuJoCo CPU and Warp do not require these assets. An older saved config
+used with `--original_cfg` needs the `mujoco_visual_model` field added to its
+asset config to enable the detailed visuals; `None` keeps the basic rendering.
 
 ### Optional Unitree Go2 deployment setup
 
