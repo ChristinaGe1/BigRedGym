@@ -38,8 +38,8 @@ class Go2TrotCfg(Go2Cfg):
     class control(Go2Cfg.control):
         stiffness = {"hip": 20.0, "thigh": 20.0, "calf": 20.0}
         damping = {"hip": 0.5, "thigh": 0.5, "calf": 0.5}
-        ctrl_frequency = 100
-        desired_sim_frequency = 100
+        ctrl_frequency = 50
+        desired_sim_frequency = 50
         gait_freq = [1.0, 3.0]  # oscillator frequency range [Hz]
         # Cycle offsets define a trot: front-left/rear-right move together,
         # half a cycle away from front-right/rear-left.
@@ -170,9 +170,8 @@ class Go2TrotRunnerCfg(Go2RunnerCfg):
                 feet_contact_forces = 0.0
                 dof_near_home = 0.0
                 min_base_height = 0.5
-                action_rate = 5.0
-                action_rate2 = 25.0
-                action_clipping = 5.0
+                action_rate = 0.1
+                action_rate2 = 0.05
                 trot_support = 3.0
                 swing_contact = 3.0
 
@@ -202,4 +201,4 @@ class Go2TrotRunnerCfg(Go2RunnerCfg):
 
     class runner(Go2RunnerCfg.runner):
         experiment_name = "go2trot"
-        max_iterations = 1100
+        max_iterations = 500

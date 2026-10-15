@@ -20,12 +20,19 @@ def test_contact_strength_uses_each_environments_applied_total_mass():
     torch.testing.assert_close(strength[1], torch.full((4,), 0.5))
 
 
-def test_action_rate_penalizes_alternating_targets():
+@pytest.mark.parametrize(
+    "targets, expected",
+    [
+        ([0.2, -0.2, 0.2], -0.16),  # Alternation remains visible.
+        ([0.4, 0.2, 0.0], -0.08),  # Equal contributions for a constant rate.
+        ([0.2, 0.2, 0.2], 0.0),  # Constant targets have no cost.
+    ],
+)
+def test_action_rate_sums_one_step_and_normalized_two_step_costs(targets, expected):
     task = Go2Trot.__new__(Go2Trot)
     task.num_actuators = 12
-    # q(t) == q(t-2) must not hide a large change since the previous command.
-    task.dof_pos_history = torch.tensor([[0.2] * 12 + [-0.2] * 12 + [0.2] * 12])
-    assert task._reward_action_rate().item() == pytest.approx(-0.16)
+    task.dof_pos_history = torch.tensor([[q for q in targets for _ in range(12)]])
+    assert task._reward_action_rate().item() == pytest.approx(expected)
 
 
 def test_yaw_tracking_uses_velocity_error_not_its_square():

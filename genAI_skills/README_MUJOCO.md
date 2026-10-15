@@ -337,8 +337,8 @@ action scales at playback changes the controller. Config snapshots predating
 the current backend config schema may require migration before evaluation.
 
 The Go2Trot tuning checkpoint is provisional: reduced residual action scales,
-corrected consecutive-action and yaw-tracking rewards, a cost for discarded
-targets, and revised command sampling improve some fixed-command cases, but
+revised action-rate and yaw-tracking rewards, and revised command sampling
+improve some fixed-command cases, but
 turning, fast tracking, and jitter still miss acceptance bounds. Observation
 scaling and the phase observations remain unchanged. The action-scale increase
 dates to commit `23c5465`; the later config refactors preserved those values.

@@ -26,7 +26,6 @@ class Go2Trot(LeggedRobot):
             self.num_envs, 1, dtype=torch.float, device=self.device
         )
         self.gait_reference = torch.zeros_like(self.dof_pos_target)
-        self.action_clip_error = torch.zeros_like(self.dof_pos_target)
         foot_names = self.robot_layout.body_groups["feet"]
         phase_offsets = self.cfg.control.gait_phase_offsets
         self._gait_phase_offsets = (
@@ -76,15 +75,10 @@ class Go2Trot(LeggedRobot):
         reference = self.gait_reference + self.default_dof_pos.index_select(
             1, self.actuated_dof_indices
         )
-        # Bound the full PD position command. Keep the applied residual in the
-        # task buffer so observations and action-history rewards describe it;
-        # the runner retains its separate raw samples for PPO likelihoods.
-        self.action_clip_error.copy_(self.dof_pos_target)
         self.dof_pos_target.clamp_(
             min=self._actuated_dof_pos_limits[:, 0] - reference,
             max=self._actuated_dof_pos_limits[:, 1] - reference,
         )
-        self.action_clip_error.sub_(self.dof_pos_target)
 
     def _compute_torques(self):
         pos = self.dof_pos.index_select(1, self.actuated_dof_indices)
@@ -151,7 +145,6 @@ class Go2Trot(LeggedRobot):
     def _reset_idx(self, reset_mask):
         super()._reset_idx(reset_mask)
         self.dof_pos_target.masked_fill_(reset_mask.unsqueeze(1), 0.0)
-        self.action_clip_error.masked_fill_(reset_mask.unsqueeze(1), 0.0)
         self._update_gait_reference()
         masked_update(
             self.dof_pos_history,
@@ -204,17 +197,6 @@ class Go2Trot(LeggedRobot):
         """Penalize load carried by feet during their scheduled swing phase."""
         phase = torch.sin(self._leg_phases())
         return -torch.mean(torch.relu(-phase) * self._foot_contact_strength(), dim=1)
-
-    def _reward_action_clipping(self):
-        """Charge for requested motion discarded by the joint safety limits.
-
-        Applied-action penalties alone are flat beyond a limit, allowing the
-        policy mean and exploration variance to grow without additional cost.
-        Normalize by the residual action scale and average over actuators.
-        """
-        return -torch.mean(
-            self.action_clip_error.abs() / self.scales["dof_pos_target"], dim=1
-        )
 
     def _reward_lin_vel_z(self):
         """Penalize z axis base linear velocity with squared exp"""
