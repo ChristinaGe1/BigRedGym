@@ -305,7 +305,54 @@ properties and link-local visual frames, including preprocessing before conversi
 Those tests use a stand-in converter; they do not establish native VSim import
 or rendering correctness.
 
-Standalone policy evaluators, comparison reports, benchmark/profile tools, and
+Go2Trot has a focused performance gate in `scripts/evaluate_go2trot.py`:
+
+```bash
+uv run --frozen --extra vsim --env-file .env.vsim scripts/evaluate_go2trot.py \
+  --backend vsim --device cuda:0 --load_run RUN --checkpoint 550 \
+  --original_cfg --output logs/go2trot-performance.json --check
+```
+
+It evaluates deterministic actions on flat ground with no pushes or domain
+randomization, using ten fixed velocity commands (m/s and rad/s), each at gait
+frequencies of 1, 2, and 3 Hz. Four replicas per case run for eight seconds; the
+first two seconds are excluded from steady-state metrics. Failures remain in
+the survival denominator and are never reset into successful episodes. JSON
+records checkpoint hash, source revision/worktree status, resolved configs,
+commands, gait frequencies, bounds, and every case's result. `--check` fails
+if any case misses a bound. This is an explicit local learning-quality check;
+hosted CI tests its metric definitions with synthetic counterexamples and does
+not train or download a checkpoint.
+
+The gate measures planar velocity RMSE, yaw-rate RMSE, target/velocity jitter
+above 10 Hz (beyond the first three gait harmonics), target clipping, swing-phase
+load, total foot support relative to body weight, contact duty, and each foot's
+load share over complete oscillator strides.
+Consecutive target changes and joint acceleration are also reported; they
+include legitimate stride motion, so they are not themselves jitter gates. Equal
+whole-run averages cannot hide alternating overloaded strides. Bounds are
+initial engineering acceptance criteria, not guarantees for hardware or other
+backends. Old policies need their saved observation/action scaling; changing
+action scales at playback changes the controller. Config snapshots predating
+the current backend config schema may require migration before evaluation.
+
+The Go2Trot tuning checkpoint is provisional: reduced residual action scales,
+corrected consecutive-action and yaw-tracking rewards, a cost for discarded
+targets, and revised command sampling improve some fixed-command cases, but
+turning, fast tracking, and jitter still miss acceptance bounds. Observation
+scaling and the phase observations remain unchanged. The action-scale increase
+dates to commit `23c5465`; the later config refactors preserved those values.
+
+VSim contact sensors now explicitly request `LOCAL` before rotating forces by
+the link orientation. Applying that rotation to `ENVIRONMENT` results gave
+incorrect world forces, corrupting gait rewards and load metrics. The native
+standing-Go2 regression checks gravity balance at four yaw angles and fails
+with the previous frame selection. Policies from the tuning trials were trained
+before this fix; their corrected-force evaluations do not establish successful
+learning with the repaired reward signal. Retraining remains necessary. Older
+reports from before the fix are invalid evidence for contact-load quality.
+
+General-purpose policy comparison reports, benchmark/profile tools, and
 their analysis helpers are no longer included. Training, playback,
 `--original_cfg`, and ordinary W&B logging remain available. The retired pendulum
 calibration failed its learning threshold; its removal supplies no passing

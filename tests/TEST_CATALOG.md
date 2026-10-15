@@ -79,6 +79,21 @@ call, and teardown, and compare matching source/dependency revisions.
 
 ## Task registry, scaling, rewards, and actions
 
+`test_vsim_contact_frames.py` checks a standing Go2 at four yaw angles: mean
+world contact forces must balance gravity within 3% of body weight. This catches
+rotating environment-frame forces as if they were link-local; it requires the
+licensed CUDA setup and explicit `Q2_VSIM_TESTS=1` opt-in.
+
+`test_go2trot_performance.py` validates the fixed-command performance gate with
+analytic balanced trots and counterexamples: standing on every foot, inverted
+gait timing, single-leg loading, alternating target jitter, missed commands,
+early failures, and load that swaps between strides. These are metric tests;
+policy quality requires running `scripts/evaluate_go2trot.py --check` on an
+explicit checkpoint and backend.
+
+The colocated `gym/envs/go2/test_go2trot.py` also checks consecutive-action
+smoothness and symmetric yaw-error rewards against hand-calculated values.
+
 | File | Protected behavior and oracle | Disposition and overlap |
 |---|---|---|
 | [test_task_registry.py](unit_tests/test_task_registry.py) | Exact manifest registration, explicit learning-class resolution, selected reset binding, absence of unsupported legacy config, and an actual CPU action step for every declared task. Manifest/static and integration oracles. | **Keep.** The stale `collapse_fixed_joints` declaration was removed and this gate passes in the recorded baseline. One step does not establish runner construction or learning. |
