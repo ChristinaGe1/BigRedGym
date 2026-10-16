@@ -282,6 +282,13 @@ remaining gaps and optional-backend support.
 
 ### W&B logging
 
+Use `--run_name tracking_trial` to label an individual training run. With
+`--task go2trot`, the log directory is
+`logs/go2trot/<timestamp>_tracking_trial/` and the W&B display name is
+`<timestamp>_tracking_trial`. `--experiment_name` changes the parent experiment
+folder under `logs/`; `--run_name` changes the new run's label, including when
+resuming with `--original_cfg`. Omitting either option keeps its config value.
+
 Ordinary W&B logging remains supported. Copy the template
 [`user/wandb_config_default.json`](../user/wandb_config_default.json) to the local
 `user/wandb_config.json` and set `entity` and `project`, or provide
@@ -407,6 +414,8 @@ uv run --frozen scripts/train.py [OPTIONS]
   --num_envs INT      Number of parallel environments (default: from task config)
   --max_iterations INT Training iterations (default: from task config)
   --seed INT          Random seed
+  --experiment_name TEXT Experiment folder under logs/ (default: task config)
+  --run_name TEXT      Run label appended to the timestamp in logs and W&B
   --resume            Resume model and optimizer state
   --load_run TEXT     Run directory below the selected experiment
   --checkpoint INT    Checkpoint iteration (default: latest)
