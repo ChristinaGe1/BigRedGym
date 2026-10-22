@@ -1,5 +1,8 @@
 from gym.envs.go2.go2_config import Go2Cfg, Go2RunnerCfg
 
+# Commanded base-height range [m]: crouched to standing tall.
+HEIGHT_COMMAND_RANGE = [0.20, 0.40]
+
 
 class Go2TrotCfg(Go2Cfg):
     class env(Go2Cfg.env):
@@ -63,6 +66,7 @@ class Go2TrotCfg(Go2Cfg):
 
         class ranges(Go2Cfg.commands.ranges):
             lin_vel_x = [-1.0, 0.0, 1.0, 3.0]
+            height = HEIGHT_COMMAND_RANGE  # min max [m]
 
     class push_robots(Go2Cfg.push_robots):
         toggle = True
@@ -92,11 +96,16 @@ class Go2TrotCfg(Go2Cfg):
 
     class reward_settings(Go2Cfg.reward_settings):
         base_height_target = Go2Cfg.reward_settings.base_height_target
+        # Width of the height-tracking reward [m^2]: 0.1 m of error gives exp(-1).
+        tracking_height_sigma = 0.01
 
     class scaling(Go2Cfg.scaling):
         # Canonical RobotLayout order is FL, FR, RL, RR, with
         # hip, thigh, calf inside each leg. Backends map native order to it.
         base_height = 0.3
+        # height_command_obs is centered on the command range, so dividing by
+        # the half-range maps it to [-1, 1].
+        height_command_obs = 0.5 * (HEIGHT_COMMAND_RANGE[1] - HEIGHT_COMMAND_RANGE[0])
         dof_pos = 4 * [1.0472, 2.53075, 0.94247]
         dof_pos_obs = dof_pos
         dof_pos_target = [0.5 * x for x in dof_pos]
@@ -112,6 +121,7 @@ class Go2TrotRunnerCfg(Go2RunnerCfg):
             "base_ang_vel",
             "projected_gravity",
             "commands",
+            "height_command_obs",
             "dof_pos_obs",
             "dof_vel",
             "dof_pos_target",
@@ -144,6 +154,7 @@ class Go2TrotRunnerCfg(Go2RunnerCfg):
             "base_ang_vel",
             "projected_gravity",
             "commands",
+            "height_command_obs",
             "dof_pos_obs",
             "dof_vel",
             "dof_pos_target",
@@ -165,7 +176,8 @@ class Go2TrotRunnerCfg(Go2RunnerCfg):
                 dof_pos_limits = 0.0
                 feet_contact_forces = 0.0
                 dof_near_home = 0.0
-                min_base_height = 0.5
+                min_base_height = 0.0  # replaced by tracking_height
+                tracking_height = 2.0
                 action_rate = 0.25
                 action_rate2 = 0.025
                 trot_support = 0.625

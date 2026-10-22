@@ -10,6 +10,7 @@ Supports MuJoCo CPU/Warp and optional VSim checkpoints.
 """
 
 import argparse
+import csv
 import random
 
 import torch
@@ -72,6 +73,14 @@ def get_play_args(argv=None):
         "gym/utils/interfaces/MujocoKeyboardInterface.py for key bindings). "
         "Use --no-keyboard to disable.",
     )
+    parser.add_argument(
+        "--log_height",
+        type=str,
+        default=None,
+        help="write env 0's commanded and actual base height to this CSV each "
+        "step (tasks with a height command); plot it with "
+        "scripts/plot_height_tracking.py --log",
+    )
     return parser.parse_args(argv)
 
 
@@ -130,16 +139,34 @@ def setup(args):
     return env, runner
 
 
-def play(env, runner):
+def play(env, runner, log_height=None):
     n_steps = 10 * int(env.max_episode_length)
-    for _ in range(n_steps):
-        runner.set_actions(
-            runner.actor_cfg["actions"],
-            runner.get_inference_actions(),
-            runner.actor_cfg["disable_actions"],
-        )
-        env.step()
-        env.check_exit()
+    rows = []
+    try:
+        for step in range(n_steps):
+            runner.set_actions(
+                runner.actor_cfg["actions"],
+                runner.get_inference_actions(),
+                runner.actor_cfg["disable_actions"],
+            )
+            env.step()
+            if log_height is not None:
+                rows.append(
+                    (
+                        (step + 1) * env.dt,
+                        env.height_command[0, 0].item(),
+                        env.base_height[0, 0].item(),
+                    )
+                )
+            env.check_exit()
+    finally:
+        # Also runs on Esc / window close, which exit via sys.exit().
+        if log_height is not None:
+            with open(log_height, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(("time_s", "height_command_m", "base_height_m"))
+                writer.writerows(rows)
+            print(f"saved {len(rows)} steps of height data to {log_height}")
 
 
 if __name__ == "__main__":
@@ -184,4 +211,6 @@ if __name__ == "__main__":
                 from gym.utils.interfaces.CommandVisualizer import CommandVisualizer
 
                 CommandVisualizer(env)
-        play(env, runner)
+        if args.log_height is not None and not hasattr(env, "height_command"):
+            raise SystemExit(f"--log_height: task {args.task} has no height command")
+        play(env, runner, args.log_height)

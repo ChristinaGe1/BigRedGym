@@ -24,7 +24,7 @@ natural U/O pair collides with vsim's step toggle:
      N M             N / M   yaw left / right
                      R       reset envs
                      Esc     quit (or close the window)
-                     Up/Down up / down (command effects: student TODO)
+                     Up/Down raise / lower the commanded base height
 
 GLFW (MuJoCo) uses ASCII codes for letter keys, so `ord(letter)` is the
 keycode. Each viewer adapter translates named special keys such as UP/DOWN
@@ -53,7 +53,7 @@ HELP_LINES = (
     "  I/K           forward / back",
     "  J/L           strafe left / strafe right",
     "  N/M           yaw left / yaw right",
-    "  Up/Down       up / down (command effects: student TODO)",
+    "  Up/Down       raise / lower base height",
     "  R             reset envs",
     "  Esc / window  quit",
     "  commands step in 1/5 increments of max",
@@ -63,7 +63,8 @@ HELP_LINES = (
 class TeleopCommands:
     """Velocity-command limits, increments, and the effect of each action.
 
-    Engine-agnostic: it only touches ``env.commands`` and the reset path.
+    Engine-agnostic: it only touches ``env.commands``, ``env.height_command``
+    (on tasks that have one), and the reset path.
     """
 
     def __init__(self, env):
@@ -78,6 +79,13 @@ class TeleopCommands:
 
         self.max_vel_yaw = 2.0
         self.increment_yaw = self.max_vel_yaw * 0.2
+
+        # Base-height command: only tasks that define the buffer respond.
+        self.has_height_command = hasattr(env, "height_command")
+        if self.has_height_command:
+            self.min_height, self.max_height = env.cfg.commands.ranges.height
+            self.increment_height = (self.max_height - self.min_height) * 0.2
+            env.height_command[:] = 0.5 * (self.min_height + self.max_height)
 
         env.commands[:] = 0.0
         env.commands[:, 0] = 1.0  # seed forward velocity so motion is visible
@@ -101,6 +109,13 @@ class TeleopCommands:
             c[:, 2] = torch.clamp(c[:, 2] + self.increment_yaw, max=self.max_vel_yaw)
         elif action == "yaw_right":
             c[:, 2] = torch.clamp(c[:, 2] - self.increment_yaw, min=-self.max_vel_yaw)
+        elif action in ("up", "down"):
+            if self.has_height_command:
+                step = (
+                    self.increment_height if action == "up" else -self.increment_height
+                )
+                h = self.env.height_command
+                h[:] = torch.clamp(h + step, min=self.min_height, max=self.max_height)
         elif action == "reset":
             self.env.timed_out[:] = True
             self.env.reset()

@@ -26,6 +26,20 @@ class Go2Trot(LeggedRobot):
             self.num_envs, 1, dtype=torch.float, device=self.device
         )
         self.gait_reference = torch.zeros_like(self.dof_pos_target)
+        # Commanded base height [m], and the same command centered on the
+        # middle of its range for the policy observation.
+        # command_ranges is parsed after the buffers exist; read the cfg here.
+        height_range = self.cfg.commands.ranges.height
+        self._height_command_center = 0.5 * (height_range[0] + height_range[1])
+        self.height_command = torch.full(
+            (self.num_envs, 1),
+            self._height_command_center,
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.height_command_obs = torch.zeros(
+            self.num_envs, 1, dtype=torch.float, device=self.device
+        )
         foot_names = self.robot_layout.body_groups["feet"]
         phase_offsets = self.cfg.control.gait_phase_offsets
         self._gait_phase_offsets = (
@@ -54,6 +68,9 @@ class Go2Trot(LeggedRobot):
     def _update_phase_observation(self):
         self.phase_obs[:, 0:1] = torch.sin(self.phase)
         self.phase_obs[:, 1:2] = torch.cos(self.phase)
+
+    def _update_height_command_observation(self):
+        self.height_command_obs[:] = self.height_command - self._height_command_center
 
     def _update_gait_reference(self):
         joint_phase = self.phase + self._gait_dof_phase_offsets.unsqueeze(0)
@@ -145,6 +162,14 @@ class Go2Trot(LeggedRobot):
             )
             self.commands.masked_fill_(drop, 0.0)
 
+        height = torch_rand_float(
+            self.command_ranges["height"][0],
+            self.command_ranges["height"][1],
+            shape=self.height_command.shape,
+            device=self.device,
+        )
+        masked_update(self.height_command, height, command_mask)
+
     def _reset_idx(self, reset_mask):
         super()._reset_idx(reset_mask)
         self.dof_pos_target.masked_fill_(reset_mask.unsqueeze(1), 0.0)
@@ -155,6 +180,7 @@ class Go2Trot(LeggedRobot):
             reset_mask,
         )
         self._update_phase_observation()
+        self._update_height_command_observation()
 
     def _post_physics_step(self):
         super()._post_physics_step()
@@ -170,6 +196,7 @@ class Go2Trot(LeggedRobot):
     def _post_decimation_step(self):
         super()._post_decimation_step()
         self._update_phase_observation()
+        self._update_height_command_observation()
 
     def _foot_contact_strength(self):
         """Map upward foot load smoothly from zero to nominal body-weight."""
@@ -224,6 +251,11 @@ class Go2Trot(LeggedRobot):
         error /= self.scales["base_height"]
         error = torch.clamp(error, max=0, min=None).flatten()
         return self._sqrdexp(error)
+
+    def _reward_tracking_height(self):
+        """Tracking of the commanded base height"""
+        error = (self.base_height - self.height_command).flatten()
+        return self._sqrdexp(error, self.cfg.reward_settings.tracking_height_sigma)
 
     def _reward_tracking_lin_vel(self):
         """Tracking of linear velocity commands (xy axes)"""

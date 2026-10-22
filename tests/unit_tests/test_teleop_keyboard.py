@@ -316,3 +316,31 @@ def test_viewer_configs_default_show_ui_false():
 
     assert LeggedRobotCfg.viewer.show_ui is False
     assert FixedRobotCfg.viewer.show_ui is False
+
+
+def test_arrows_step_and_clamp_the_height_command():
+    env = FakeEnv()
+    env.height_command = torch.zeros(2, 1)
+    env.cfg.commands = SimpleNamespace(
+        ranges=SimpleNamespace(height=[0.2, 0.4]), resampling_time=1.0
+    )
+    cmds = TeleopCommands(env)
+    assert env.height_command[0, 0].item() == pytest.approx(0.3)
+
+    cmds.apply("up")
+    assert env.height_command[0, 0].item() == pytest.approx(0.34)
+    for _ in range(20):
+        cmds.apply("up")
+    assert env.height_command[0, 0].item() == pytest.approx(0.4)
+    for _ in range(20):
+        cmds.apply("down")
+    assert env.height_command[0, 0].item() == pytest.approx(0.2)
+
+
+def test_arrows_are_ignored_without_a_height_command():
+    env = FakeEnv()
+    cmds = TeleopCommands(env)
+    before = env.commands.clone()
+    cmds.apply("up")
+    cmds.apply("down")
+    assert torch.equal(env.commands, before)
